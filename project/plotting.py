@@ -59,3 +59,41 @@ def plot_3d_trajectory(
     ax.set_title(title)
     ax.legend(frameon=False, loc="upper left")
     return fig
+
+
+def plot_3d_overlay(trajectories, cell_types, title: str, plot_projections=True, invert_y: bool = False):
+    """Several trajectories in one 3D box, each with its own color / line style and wall projections.
+
+    trajectories: list of (sol, label, color, linestyle); all share the start state of the first one.
+    """
+    sols = [t[0] for t in trajectories]
+    lims = [(0, max(1.0, max(np.nanmax(s[:, i]) for s in sols) * 1.05)) for i in range(3)]
+    y_back = lims[1][0] if invert_y else lims[1][1]  # the CD8 wall at the back of the box
+
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(111, projection="3d", facecolor="white")
+
+    for sol, label, color, ls in trajectories:
+        xs, ys, zs = sol[:, 0], sol[:, 1], sol[:, 2]
+        ax.plot(xs, ys, zs, color=color, linewidth=3, linestyle=ls, label=label)
+        if plot_projections:
+            proj = dict(color=color, alpha=0.3, linewidth=2.5, linestyle=ls)
+            ax.plot(xs, ys, np.full_like(zs, lims[2][0]), **proj)
+            ax.plot(xs, np.full_like(ys, y_back), zs, **proj)
+            ax.plot(np.full_like(xs, lims[0][0]), ys, zs, **proj)
+
+    start = sols[0][0]
+    ax.scatter(*start, color="#6BBF59", s=70, label="Start state", depthshade=False, zorder=10)
+    for sol, label, color, _ in trajectories:
+        end = sol[~np.isnan(sol).any(axis=1)][-1]
+        ax.scatter(*end, color=color, s=60, marker="X", label=f"Final state ({label})", depthshade=False, zorder=10)
+
+    ax.set_xlim(*lims[0])
+    ax.set_ylim(*(lims[1][::-1] if invert_y else lims[1]))
+    ax.set_zlim(*lims[2])
+    ax.set_xlabel(cell_types[0])
+    ax.set_ylabel(cell_types[1])
+    ax.set_zlabel(cell_types[2])
+    ax.set_title(title)
+    ax.legend(frameon=False, loc="upper left")
+    return fig

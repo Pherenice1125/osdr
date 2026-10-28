@@ -18,8 +18,7 @@ TERMS_PER_LINE = 4
 FIGURES = [
     ("Fig. 4f initial state: time series (solid OSDR, dashed SINDy)", "part3_main_timeseries.png"),
     ("2D projections of the Fig. 4f trajectory", "part3_main_projections.png"),
-    ("3D trajectory: OSDR", "part3_main_3d_osdr.png"),
-    ("3D trajectory: SINDy", "part3_main_3d_sindy.png"),
+    ("3D trajectory: OSDR (solid) vs SINDy (dashed)", "part3_main_3d.png"),
 ]
 
 

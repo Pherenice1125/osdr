@@ -215,10 +215,6 @@ Relative trajectory error from the Fig. 4f initial state (not used for training)
 
 ![2D projections of the Fig. 4f trajectory](../figures/part3_main_projections.png)
 
-**3D trajectory: OSDR**
+**3D trajectory: OSDR (solid) vs SINDy (dashed)**
 
-![3D trajectory: OSDR](../figures/part3_main_3d_osdr.png)
-
-**3D trajectory: SINDy**
-
-![3D trajectory: SINDy](../figures/part3_main_3d_sindy.png)
+![3D trajectory: OSDR (solid) vs SINDy (dashed)](../figures/part3_main_3d.png)

@@ -43,7 +43,7 @@ from osdr_ode import (
     with_b_inhibition_scale,
     with_death_scale,
 )
-from plotting import FIGURE_DIR, PROJECTIONS, plot_3d_trajectory, plot_timeseries, save
+from plotting import FIGURE_DIR, PROJECTIONS, plot_3d_overlay, plot_timeseries, save
 from report import write_ode_comparison
 from sindy_tools import (
     STATE_SCALE,
@@ -68,6 +68,7 @@ N_VAL = 20  # held-out trajectories for choosing the SINDy threshold
 N_TEST = 20  # held-out initial states for testing trajectories
 
 T_TEST = np.linspace(0, FIG4F_T_END, 5001)
+T_PLOT_MAX = 1500  # x-axis limit of all "number of cells vs. t" plots (trajectories are still integrated to 5000)
 
 
 """
@@ -257,7 +258,7 @@ Figures:
 """
 
 
-def plot_overlay_timeseries(ax, s_true, s_est, t_max=2500, label_true="OSDR", label_est="SINDy"):
+def plot_overlay_timeseries(ax, s_true, s_est, t_max=T_PLOT_MAX, label_true="OSDR", label_est="SINDy"):
     mask = T_TEST <= t_max
     plot_timeseries(ax, T_TEST[mask], s_true[mask], CELL_TYPES, CELL_COLORS, label_suffix=f" ({label_true})")
     plot_timeseries(ax, T_TEST[mask], s_est[mask], CELL_TYPES, CELL_COLORS, linestyle="--",
@@ -313,9 +314,9 @@ def exp_main(params, data_states, pools):
     ax.set_title("Fig. 4f initial state (out-of-sample): OSDR (solid) vs SINDy (dashed)")
     save(fig, "part3_main_timeseries.png")
 
-    lims = [(0, max(np.nanmax(s[:, i]), np.nanmax(g[:, i])) * 1.05) for i in range(3)]
-    save(plot_3d_trajectory(s, CELL_TYPES, "OSDR ODE (Fig. 4f)", lims=lims), "part3_main_3d_osdr.png")
-    save(plot_3d_trajectory(g, CELL_TYPES, "SINDy ODE", color="#E4572E", lims=lims), "part3_main_3d_sindy.png")
+    overlay = [(s, "OSDR", "#3B76BC", "-"), (g, "SINDy", "#E4572E", "--")]
+    fig = plot_3d_overlay(overlay, CELL_TYPES, "Fig. 4f trajectory: OSDR (solid) vs SINDy (dashed)", invert_y=True)
+    save(fig, "part3_main_3d.png")
     save(plot_projections(s, g, "2D projections of the Fig. 4f trajectory"), "part3_main_projections.png")
 
     settings = {"n_traj": len(fit.trajs), "n_initial_states": DEFAULT_N_TRAJ, "t_len": DEFAULT_T_LEN, "dt": DT,
@@ -338,7 +339,7 @@ def exp_length(params, data_states, pools):
 
     fig, axs = plt.subplots(2, 3, figsize=(14, 7))
     plot_metric_curves(axs[0], df, "length of each training time series (t_len)")
-    for ax, t_len in zip(axs[1], [100, 400, 1600]):
+    for ax, t_len in zip(axs[1], [25, 50, 200]):
         plot_overlay_timeseries(ax, rows[t_len]["sol_true"], rows[t_len]["sol_sindy"])
         ax.set_title(f"t_len = {t_len}")
         ax.get_legend().remove()
