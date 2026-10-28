@@ -59,6 +59,7 @@ Every script saves its figures to `project/figures/`. Add `--show` to also open 
 | `osdr_ode.py` | The OSDR ODE in numpy (`rhs`, `simulate`), parameter loading, parameter modifiers (`with_death_scale`, `with_b_inhibition_scale`, `with_truncation`), equation printing |
 | `sindy_tools.py` | SINDy fitting with automatic threshold selection, a fast polynomial-ODE class (`PolyODE`), and the comparison metrics |
 | `plotting.py` | Shared plotting helpers (time series, 3D trajectory) |
+| `report.py` | Writes `results/main_ode_comparison.md`: both ODEs in LaTeX, a structural comparison, coefficient tables per equation, interaction signs, vector-field / origin / behaviour metrics, threshold sweep and figures |
 | `part1_timeseries.py` | Part 1 |
 | `part2_params.py` | Part 2 |
 | `part3_sindy.py` | Part 3 |
@@ -115,7 +116,7 @@ python project/part3_sindy.py [--exp main|length|ntraj|params|control] [--show]
 
 | `--exp` | Question | Main output |
 | --- | --- | --- |
-| `main` | What ODE does SINDy find, and how close is it to OSDR? | printed SINDy ODE and comparisons; `part3_main_timeseries.png`, `part3_main_3d_osdr.png`, `part3_main_3d_sindy.png`, `part3_main_projections.png`; `results/main_coefficients.csv` |
+| `main` | What ODE does SINDy find, and how close is it to OSDR? | printed SINDy ODE and comparisons; `part3_main_timeseries.png`, `part3_main_3d_osdr.png`, `part3_main_3d_sindy.png`, `part3_main_projections.png`; `results/main_coefficients.csv`; **`results/main_ode_comparison.md`** (side-by-side report of the two ODEs) |
 | `length` | How long must each time series be? (25 to 3200) | `part3_length.png` and a metrics table |
 | `ntraj` | How many trajectories are needed? (1 to 300, and "Fig. 4f only") | `part3_ntraj.png` and a metrics table |
 | `params` | Does SINDy still work after the Part 2 parameter changes? | `part3_params.png`; excitability thresholds for OSDR and SINDy |

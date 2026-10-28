@@ -44,6 +44,7 @@ from osdr_ode import (
     with_death_scale,
 )
 from plotting import FIGURE_DIR, PROJECTIONS, plot_3d_trajectory, plot_timeseries, save
+from report import write_ode_comparison
 from sindy_tools import (
     STATE_SCALE,
     PolyODE,
@@ -182,6 +183,7 @@ def compare_coefficients(ode: PolyODE, ref: PolyODE, name: str):
         cells = ", ".join(f"{ode.feature_names[k]}: {A[i, k]:+.3f} vs {B[i, k]:+.3f}" for k in top)
         print(f"    d{c}/dt  largest terms (SINDy vs ref, scaled): {cells}")
     print(f"    full table: {RESULTS_DIR / f'{name}_coefficients.csv'}\n")
+    return {"coef_err": float(np.linalg.norm(A - B) / np.linalg.norm(B)), "scaled_sindy": A, "scaled_ref": B}
 
 
 def compare_vector_field(f_true, ode: PolyODE, train_states, data_states):
@@ -190,12 +192,15 @@ def compare_vector_field(f_true, ode: PolyODE, train_states, data_states):
     outside = rng.uniform(0, 1, size=(2000, 3)) * q99 * 1.5
     outside = outside[(outside > q99).any(axis=1)]
     print("[2] vector field: relative error ||f_sindy - f_osdr|| / ||f_osdr||, mean cosine of directions")
+    out = {}
     for name, X in [("training trajectories", train_states), ("observed data states", data_states),
                     ("beyond the data (> q99)", outside)]:
         e = vector_field_errors(f_true, ode.rhs, X)
+        out[name] = e
         print(f"    {name:26s} rel. error {e['rel_err']:8.3f}   median pointwise {e['median_pointwise_rel_err']:7.3f}"
               f"   cosine {e['mean_cosine']:.3f}")
     print()
+    return out
 
 
 def compare_interactions(f_true, ode: PolyODE, data_states):
@@ -208,17 +213,24 @@ def compare_interactions(f_true, ode: PolyODE, data_states):
         print(f"    {c:>4}" + cells)
     agree = int(np.sum(np.sign(J_true) == np.sign(J_est)))
     print(f"    (OSDR / SINDy)  sign agreement: {agree} / 9\n")
+    return {"J_true": J_true, "J_est": J_est, "agree": agree}
 
 
 def compare_origin(params, ode: PolyODE):
     f_true = lambda X: rhs(params, X)  # noqa: E731
     J_true, J_est = jacobian_at(f_true, np.zeros(3)), jacobian_at(ode.rhs, np.zeros(3))
+    out = {
+        "f0_true": f_true(np.zeros((1, 3)))[0],
+        "f0_est": ode.rhs(np.zeros((1, 3)))[0],
+        "eig_true": np.sort(np.linalg.eigvals(J_true).real),
+        "eig_est": np.sort(np.linalg.eigvals(J_est).real),
+    }
     print("[4] origin (no immune cells)")
-    print(f"    f(0):   OSDR {np.round(f_true(np.zeros((1, 3)))[0], 5)}   SINDy {np.round(ode.rhs(np.zeros((1, 3)))[0], 5)}")
-    print(f"    eigenvalues of J(0):  OSDR {np.round(np.sort(np.linalg.eigvals(J_true).real), 5)}"
-          f"   SINDy {np.round(np.sort(np.linalg.eigvals(J_est).real), 5)}")
+    print(f"    f(0):   OSDR {np.round(out['f0_true'], 5)}   SINDy {np.round(out['f0_est'], 5)}")
+    print(f"    eigenvalues of J(0):  OSDR {np.round(out['eig_true'], 5)}   SINDy {np.round(out['eig_est'], 5)}")
     print("    (OSDR: f(0) = 0 by construction (X_i multiplies every term) and J(0) = diag(sigmoid(beta_0) - p-);")
     print("     SINDy does not enforce this - f(0) = 0 only if the constant terms are thresholded away)\n")
+    return out
 
 
 def compare_behaviour(params, ode: PolyODE, res: dict):
@@ -226,14 +238,18 @@ def compare_behaviour(params, ode: PolyODE, res: dict):
     th_true = excitability_threshold(lambda x0, t: sim_true(x0, t))
     th_est = excitability_threshold(lambda x0, t: ode.simulate(x0, t))
     s, g = res["sol_true"], res["sol_sindy"]
+    peaks = {
+        c: (np.nanmax(s[:, i]), T_TEST[np.nanargmax(s[:, i])], np.nanmax(g[:, i]), T_TEST[np.nanargmax(g[:, i])])
+        for i, c in enumerate(CELL_TYPES)
+    }
     print("[5] behaviour")
     print(f"    excitability threshold CD4(0) (CD8=4, B=1): OSDR {th_true:.1f}   SINDy {th_est:.1f}")
-    for i, c in enumerate(CELL_TYPES):
-        print(f"    {c:>3} peak: OSDR {np.nanmax(s[:, i]):6.1f} at t={T_TEST[np.nanargmax(s[:, i])]:4.0f}"
-              f"   SINDy {np.nanmax(g[:, i]):6.1f} at t={T_TEST[np.nanargmax(g[:, i])]:4.0f}")
+    for c, (p_true, t_true, p_est, t_est) in peaks.items():
+        print(f"    {c:>3} peak: OSDR {p_true:6.1f} at t={t_true:4.0f}   SINDy {p_est:6.1f} at t={t_est:4.0f}")
     print(f"    Fig. 4f trajectory relative error: {res['fig4f_err']:.3f}")
     print(f"    {N_TEST} held-out initial states: median trajectory error {res['test_median_err']:.3f},"
           f" escaped {res['test_escaped']:.0%}\n")
+    return {"threshold_true": th_true, "threshold_est": th_est, "peaks": peaks}
 
 
 """
@@ -282,11 +298,13 @@ def exp_main(params, data_states, pools):
     print(fit.ode.format(), "\n")
 
     ref = least_squares_reference(params, train_states)
-    compare_coefficients(fit.ode, ref, "main")
-    compare_vector_field(f_true, fit.ode, train_states[::10], data_states)
-    compare_interactions(f_true, fit.ode, data_states)
-    compare_origin(params, fit.ode)
-    compare_behaviour(params, fit.ode, res)
+    comparisons = {
+        "coefficients": compare_coefficients(fit.ode, ref, "main"),
+        "vector_field": compare_vector_field(f_true, fit.ode, train_states[::10], data_states),
+        "interactions": compare_interactions(f_true, fit.ode, data_states),
+        "origin": compare_origin(params, fit.ode),
+        "behaviour": compare_behaviour(params, fit.ode, res),
+    }
 
     s, g = res["sol_true"], res["sol_sindy"]
     fig, ax = plt.subplots(figsize=(8, 4))
@@ -299,6 +317,11 @@ def exp_main(params, data_states, pools):
     save(plot_3d_trajectory(s, CELL_TYPES, "OSDR ODE (Fig. 4f)", lims=lims), "part3_main_3d_osdr.png")
     save(plot_3d_trajectory(g, CELL_TYPES, "SINDy ODE", color="#E4572E", lims=lims), "part3_main_3d_sindy.png")
     save(plot_projections(s, g, "2D projections of the Fig. 4f trajectory"), "part3_main_projections.png")
+
+    settings = {"n_traj": len(fit.trajs), "n_initial_states": DEFAULT_N_TRAJ, "t_len": DEFAULT_T_LEN, "dt": DT,
+                "threshold": fit.threshold, "sweep": fit.sweep, "state_scale": STATE_SCALE}
+    path = write_ode_comparison(RESULTS_DIR / "main_ode_comparison.md", params, fit.ode, ref, res, comparisons, settings)
+    print(f"ODE comparison report: {path}\n")
 
 
 def exp_length(params, data_states, pools):
