@@ -1,11 +1,11 @@
 """
 Part 1: the OSDR ODE behind Fig. 4f.
 
-    python sindy/part1_timeseries.py            # print the 3 ODEs, plot time series + 3D trajectory
-    python sindy/part1_timeseries.py --verify   # also check osdr_ode.rhs against the original tdm model
-    python sindy/part1_timeseries.py --show     # open the figures in a window (they are always saved)
+    python project/part1_timeseries.py            # print the 3 ODEs, plot time series + 3D trajectory
+    python project/part1_timeseries.py --verify   # also check osdr_ode.rhs against the original tdm model
+    python project/part1_timeseries.py --show     # open the figures in a window (they are always saved)
 
-Figures are saved under sindy/figures/.
+Figures are saved under project/figures/.
 """
 
 import argparse
@@ -26,6 +26,8 @@ from osdr_ode import (
 )
 from plotting import FIGURE_DIR, plot_3d_trajectory, plot_timeseries, save
 
+T_END = 1500.0  # the pulse is over by t ~ 2000 (Fig. 4f itself integrates to 5000)
+
 
 def verify_against_tdm(params, n_states: int = 2000, seed: int = 0):
     """rhs() must agree with tdm's model.delta_cells and compute_trajectory (the code that draws Fig. 4f)."""
@@ -45,7 +47,7 @@ def verify_against_tdm(params, n_states: int = 2000, seed: int = 0):
     print(f"  max |rhs - tdm.delta_cells| over {len(X)} states: {err:.2e}")
 
     # 2. the Fig. 4f trajectory itself:
-    t = np.linspace(0, FIG4F_T_END, 2001)
+    t = np.linspace(0, FIG4F_T_END, int(FIG4F_T_END) + 1)
     sol_tdm = compute_trajectory(ana, initial_cell_counts=list(FIG4F_X0), odeint_timepoints=t)
     sol_ours = simulate(params, FIG4F_X0, t)
     print(f"  max |trajectory - tdm.compute_trajectory| (cells): {np.abs(sol_ours - sol_tdm).max():.2e}")
@@ -83,7 +85,7 @@ def main():
     if args.verify:
         verify_against_tdm(params)
 
-    t = np.linspace(0, FIG4F_T_END, 5001)
+    t = np.linspace(0, T_END, int(T_END) + 1)
     sol = simulate(params, FIG4F_X0, t)
     print(f"Fig. 4f trajectory from x0 = {FIG4F_X0.tolist()}:")
     describe_pulse(params, sol, t)
@@ -93,7 +95,7 @@ def main():
     ax.set_title("OSDR ODE: Fig. 4f initial state (CD4, CD8, B) = (40, 4, 1)")
     save(fig, "part1_timeseries.png")
 
-    fig = plot_3d_trajectory(sol, params.cell_types, title="OSDR (Fig. 4f)")
+    fig = plot_3d_trajectory(sol, params.cell_types, title="OSDR (Fig. 4f)", invert_y=True)
     save(fig, "part1_trajectory_3d.png")
 
     print(f"figures saved to {FIGURE_DIR}")

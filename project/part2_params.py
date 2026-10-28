@@ -1,9 +1,9 @@
 """
 Part 2: change parameters of the OSDR ODE and see how the immune pulse changes.
 
-    python sindy/part2_params.py                 # all experiments
-    python sindy/part2_params.py --exp x0        # only one: x0 | death | binhib | truncate
-    python sindy/part2_params.py --show
+    python project/part2_params.py                 # all experiments
+    python project/part2_params.py --exp x0        # only one: x0 | death | binhib | truncate
+    python project/part2_params.py --show
 
 Experiments:
     x0        initial number of CD4 T cells -> excitability threshold
@@ -11,7 +11,7 @@ Experiments:
     binhib    strength of every B-containing term in the T cell equations scaled by 0 ... 2
     truncate  division-rate truncation at p_max on / off
 
-Figures are saved under sindy/figures/.
+Figures are saved under project/figures/.
 """
 
 import argparse

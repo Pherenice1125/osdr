@@ -26,8 +26,8 @@ import sympy as sp
 from scipy.integrate import solve_ivp
 from scipy.special import expit
 
-SINDY_DIR = Path(__file__).resolve().parent
-CACHE_DIR = SINDY_DIR / "_cache"
+PROJECT_DIR = Path(__file__).resolve().parent
+CACHE_DIR = PROJECT_DIR / "_cache"
 PARAMS_PATH = CACHE_DIR / "osdr_3d_params.json"
 STATES_PATH = CACHE_DIR / "osdr_3d_data_states.npy"
 
@@ -165,7 +165,7 @@ def sigmoid(z):
     return expit(z)
 
 
-def division_rates(params: OSDRParams, X: np.ndarray) -> np.ndarray:
+def  division_rates(params: OSDRParams, X: np.ndarray) -> np.ndarray:
     """p+(X) for each cell type, shape (n, n_cell_types)."""
     p = sigmoid(poly2_features(X) @ params.beta.T)
     if params.truncate:

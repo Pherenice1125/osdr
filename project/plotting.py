@@ -1,5 +1,5 @@
 """
-Shared plotting helpers for the sindy/ scripts.
+Shared plotting helpers for the project/ scripts.
 """
 
 from pathlib import Path
@@ -27,10 +27,15 @@ def plot_timeseries(ax, t, sol, cell_types, colors, linestyle="-", label_suffix=
     ax.spines[["top", "right"]].set_visible(False)
 
 
-def plot_3d_trajectory(sol, cell_types, title: str, color="#3B76BC", plot_projections=True, lims=None):
-    """Same style as tdm.plot.three_cells.trajectory.plot_3D_trajectory (linear space), for any trajectory."""
+def plot_3d_trajectory(
+    sol, cell_types, title: str, color="#3B76BC", plot_projections=True, lims=None, invert_y: bool = False
+):
+    """Same style as tdm.plot.three_cells.trajectory.plot_3D_trajectory (linear space), for any trajectory.
+
+    invert_y=True flips the second axis (CD8) so that its zero lies next to the vertical (B) axis.
+    """
     xs, ys, zs = sol[:, 0], sol[:, 1], sol[:, 2]
-    lims = lims or [(0, max(1.0, sol[:, i].max() * 1.05)) for i in range(3)]
+    lims = lims or [(0, max(1.0, np.nanmax(sol[:, i]) * 1.05)) for i in range(3)]
 
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111, projection="3d", facecolor="white")
@@ -38,14 +43,15 @@ def plot_3d_trajectory(sol, cell_types, title: str, color="#3B76BC", plot_projec
 
     if plot_projections:
         gray = dict(color="gray", alpha=0.5, linewidth=3)
+        y_back = lims[1][0] if invert_y else lims[1][1]  # the CD8 wall at the back of the box
         ax.plot(xs, ys, np.full_like(zs, lims[2][0]), **gray)
-        ax.plot(xs, np.full_like(ys, lims[1][1]), zs, **gray)
+        ax.plot(xs, np.full_like(ys, y_back), zs, **gray)
         ax.plot(np.full_like(xs, lims[0][0]), ys, zs, **gray)
 
     ax.scatter(*sol[0], color="#6BBF59", s=60, label="Start state", depthshade=False)
     ax.scatter(*sol[-1], color="#E4572E", s=60, label="Final state", depthshade=False)
     ax.set_xlim(*lims[0])
-    ax.set_ylim(*lims[1])
+    ax.set_ylim(*(lims[1][::-1] if invert_y else lims[1]))
     ax.set_zlim(*lims[2])
     ax.set_xlabel(cell_types[0])
     ax.set_ylabel(cell_types[1])
